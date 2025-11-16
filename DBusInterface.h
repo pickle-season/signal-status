@@ -22,14 +22,17 @@ namespace SignalStatus {
 
                 std::vector<Player> players;
 
+                int count = 0;
                 for (const QString &name : names) {
                     if (name.startsWith("org.mpris.MediaPlayer2.")) {
 
                         players.push_back(
                             Player(
-                                name
+                                name,
+                                count
                             )
                         );
+                        count++;
                     }
                 }
 

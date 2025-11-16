@@ -3,18 +3,22 @@
 #include <memory>
 #include <qdbusargument.h>
 #include <QDBusInterface>
+#include <qdbusreply.h>
+#include <print>
 
 namespace SignalStatus {
     class Player {
 
     public:
-        Player(QString name) {
+        Player(QString name, int priority) : priority(priority) {
             this->name = name.toStdString();
         }
 
         // TODO: Maybe change these to QStrings?
         std::string name;
-        std::string Shuffle;
+        int priority;
+        bool isValid = true;
+        //std::string Shuffle;
         std::string PlaybackStatus;
         QVariantMap Metadata;
         long long Position;
@@ -23,49 +27,44 @@ namespace SignalStatus {
 
         bool operator== (const Player &right) const {
             return name == right.name &&
-                   Shuffle == right.Shuffle &&
+                   //Shuffle == right.Shuffle &&
                    PlaybackStatus == right.PlaybackStatus &&
                    Metadata == right.Metadata &&
                    Position == right.Position;
         }
 
         void poll() {
-            Metadata = getProperty<QVariantMap>("Metadata");
-            PlaybackStatus = getProperty<std::string>("PlaybackStatus");
-            Shuffle = getProperty<std::string>("Shuffle");
-            Position = getProperty<long long>("Position");
+            Metadata.clear();
+            const QDBusArgument metadataMap = getProperty("Metadata").value<QDBusArgument>();
+
+            if (!isValid)
+                return;
+
+            metadataMap >> Metadata;
+
+            PlaybackStatus = getProperty("PlaybackStatus").toString().toStdString();
+            //Shuffle = getProperty("Shuffle").toString().toStdString();
+            Position = getProperty("Position").toLongLong();
         }
 
     private:
-        template <typename T> T getProperty(std::string property) {
-            QDBusMessage msg = QDBusMessage::createMethodCall(
+        QVariant getProperty(std::string property) {
+            QDBusInterface interface(
                 QString::fromStdString(name),
-                "/org/mpris/MediaPlayer2",
-                "org.freedesktop.DBus.Properties",
-                "Get"
-            );
-            msg << "org.mpris.MediaPlayer2.Player" << property.c_str();
+            "/org/mpris/MediaPlayer2",
+            "org.freedesktop.DBus.Properties",
+                QDBusConnection::sessionBus()
+                );
 
-            QDBusMessage reply = QDBusConnection::sessionBus().call(msg);
-            QDBusVariant dbusVariant = reply.arguments().first().value<QDBusVariant>();
+            QDBusReply<QDBusVariant> reply = interface.call("Get", "org.mpris.MediaPlayer2.Player", QString::fromStdString(property));
+            if (!reply.isValid()) {
+                QDBusError error = reply.error();
+                std::println("{}: {}: {}", name, error.name().toStdString(), error.message().toStdString());
+                isValid = false;
 
-            if constexpr (std::is_same_v<T, std::string>) {
-                return dbusVariant.variant().toString().toStdString();
+                return QVariant();
             }
-
-            else if constexpr (std::is_same_v<T, QVariantMap>) {
-                QDBusArgument arg = dbusVariant.variant().value<QDBusArgument>();
-
-                // Convert a{sv} into a QMap
-                QVariantMap result;
-                arg >> result;
-                return result;
-            }
-
-            else if constexpr (std::is_same_v<T, long long>) {
-                return dbusVariant.variant().toLongLong();
-                //return dbusVariant.variant().toString().toStdString();
-            }
+            return reply.value().variant();
         }
     };
 } // SignalStatus

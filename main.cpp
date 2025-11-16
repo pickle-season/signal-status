@@ -44,6 +44,11 @@ namespace SignalStatus {
     }
 
     void run() {
+        // TODO: Remove ugly foreach loops :(
+
+        setbuf(stdout,NULL);
+
+        std::println("Initializing signal-status");
         DBusInterface interface = DBusInterface();
 
         std::vector<Player> players = interface.getMprisPlayers();
@@ -52,8 +57,32 @@ namespace SignalStatus {
         Player *selectedPlayer = nullptr;
         while (true) {
             sleep(1);
+            std::vector<Player> newPlayers = interface.getMprisPlayers();
+            QVector<std::string> player_names = {};
+            for (Player &player: players) {
+                player_names.append(player.name);
+            }
+
+            for (Player &player: newPlayers) {
+                if (!player_names.contains(player.name)) {
+                    std::println("Found new player: {}, refreshing...", player.name);
+                    selectedPlayer = nullptr;
+                    players = newPlayers;
+                }
+            }
+            int maxPriority = 0;
             for (Player &player: players) {
                 player.poll();
+
+                if (!player.isValid) {
+                    std::println("Player {} is invalid, refreshing...", player.name);
+                    selectedPlayer = nullptr;
+                    players = interface.getMprisPlayers();
+                }
+
+                if (player.PlaybackStatus == "Playing" && player.priority > maxPriority) {
+                    maxPriority = player.priority;
+                }
             }
 
             if (oldPlayers == players) {
@@ -69,7 +98,7 @@ namespace SignalStatus {
                     playerName = selectedPlayer->name;
                 }
 
-                if (player.PlaybackStatus == "Playing" && player.name != playerName) {
+                if (player.PlaybackStatus == "Playing" && player.name != playerName && player.priority == maxPriority) {
                     std::println("selecting player: {}", player.name);
                     selectedPlayer = &player;
                 }
