@@ -16,6 +16,7 @@ namespace SignalStatus {
         p.start(executable, args);
         p.waitForFinished();
 
+        // TODO: Read stderr separately and print if it's not empty
         return p.readAll();
     }
 
@@ -77,6 +78,7 @@ namespace SignalStatus {
     }
 
     void run() {
+        // TODO: Add check if signal-cli is installed
         // TODO: Remove ugly foreach loops :(
 
         setbuf(stdout,nullptr);
