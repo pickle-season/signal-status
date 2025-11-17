@@ -17,12 +17,11 @@ namespace SignalStatus {
 
                 std::vector<Player> players;
 
-                int count = 0;
+                std::ranges::sort(names);
+
                 for (const QString& name : names) {
                     if (name.startsWith("org.mpris.MediaPlayer2.")) {
-                        // TODO: Set priority based on name length
-                        players.emplace_back(name, count);
-                        count++;
+                        players.emplace_back(name);
                     }
                 }
 

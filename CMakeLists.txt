@@ -8,10 +8,10 @@ find_package(Qt6 REQUIRED COMPONENTS Core DBus)
 
 qt_standard_project_setup()
 qt_add_executable(signal-status main.cpp
-        Player.cpp
         Player.h
-        DBusInterface.cpp
-        DBusInterface.h)
+        DBusInterface.h
+        Utils.h
+)
 
 target_link_libraries(signal-status PRIVATE Qt6::Core Qt::DBus)
 

@@ -5,15 +5,16 @@
 #include <qdbusargument.h>
 #include <qdbusreply.h>
 #include <utility>
+#include<compare>
+#include "Utils.h"
 
 namespace SignalStatus {
     class Player {
         public:
-            Player(QString name, const int priority) : name(std::move(name)), priority(priority) {}
+            explicit Player(QString name) : name(std::move(name)) {}
 
             // TODO: Change PlaybackStatus to Enum
             QString name;
-            int priority;
             bool isValid = true;
             QString PlaybackStatus;
             QVariantMap Metadata;
@@ -27,6 +28,22 @@ namespace SignalStatus {
                     && Position == right.Position;
             }
 
+            bool operator<(const Player& other) const {
+                if (PlaybackStatus != "Playing" && other.PlaybackStatus == "Playing") return true;
+                if (other.PlaybackStatus != "Playing" && PlaybackStatus == "Playing") return false;
+
+                return name.length() > other.name.length();
+            }
+
+            auto operator<=>(const Player& other) const {
+                if (PlaybackStatus == "Playing" && other.PlaybackStatus != "Playing")
+                    return std::strong_ordering::greater;
+                if (PlaybackStatus != "Playing" && other.PlaybackStatus == "Playing")
+                    return std::strong_ordering::less;
+
+                return name.length() <=> other.name.length();
+            }
+
             void poll() {
                 Metadata.clear();
                 const QVariant metadataVariant = getProperty("Metadata");
@@ -35,13 +52,16 @@ namespace SignalStatus {
                     return;
                 }
 
-                auto metadataMap = metadataVariant.value<QDBusArgument>();
+                const auto metadataMap = metadataVariant.value<QDBusArgument>();
 
                 metadataMap >> Metadata;
 
                 PlaybackStatus = getProperty("PlaybackStatus").toString();
-                // TODO: Check if position is valid
                 Position = getProperty("Position").toLongLong();
+
+                // set position to 0 when length is also 0
+                if (!Utils::getValue(Metadata, "mpris:length").toLongLong())
+                    Position = 0;
             }
 
         private:
@@ -65,7 +85,7 @@ namespace SignalStatus {
                     );
                     isValid = false;
 
-                    return QVariant{};
+                    return {};
                 }
                 return reply.value().variant();
             }

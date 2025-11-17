@@ -1,56 +1,16 @@
 #include "DBusInterface.h"
 #include <QDBusMetaType>
 #include <QDebug>
-#include <QProcess>
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <print>
-#include <time.h>
+#include <ctime>
 #include <vector>
+#include <algorithm>
 
 namespace SignalStatus {
-    // TODO: Redo everything with QStrings
-    QString runCommand(const QString& executable, const QStringList& args) {
-        QProcess p;
-        p.start(executable, args);
-        p.waitForFinished();
-
-        // TODO: Read stderr separately and print if it's not empty
-        return p.readAll();
-    }
-
-    void updateProfile(const QString& about, const QString& emoji) {
-        runCommand(
-            "signal-cli",
-            {
-                "updateProfile",
-                "--about", about,
-                "--about-emoji", emoji
-            }
-        );
-    }
-
-    QVariant getValue(QVariantMap map, const QString& key) {
-        if (map.keys().contains(key)) {
-            return map[key];
-        }
-        return QString("");
-    }
-
-    QString formatTime(long long totalSeconds) {
-        long long hours = totalSeconds / 3600;
-        long long minutes = totalSeconds % 3600 / 60;
-        long long seconds = totalSeconds % 60;
-
-        // TODO use --:-- when unknown time or 0:00
-        if (!hours) {
-            return QString::asprintf("%lld:%02lld", minutes, seconds);
-        }
-        return QString::asprintf("%lld:%02lld:%02lld", hours, minutes, seconds);
-    }
-
     Player* findPlayerByName(const QString& name, std::vector<Player>& players) {
         for (Player& player : players) {
             if (player.name == name) {
@@ -60,9 +20,9 @@ namespace SignalStatus {
         return nullptr;
     }
 
-    QVector<QString> getPlayerNames(std::vector<Player>* players) {
+    QVector<QString> getPlayerNames(std::vector<Player>& players) {
         QVector<QString> playerNames;
-        for (Player& player : *players) {
+        for (Player& player : players) {
             playerNames.append(player.name);
         }
 
@@ -70,41 +30,29 @@ namespace SignalStatus {
     }
 
     QString buildAbout(const Player* player) {
-        QString title = getValue(player->Metadata, "xesam:title").toString();
-        QString artist = getValue(player->Metadata, "xesam:artist").toString();
-        QString album = getValue(player->Metadata, "xesam:album").toString();
-        long long length = getValue(player->Metadata, "mpris:length").toLongLong();
-        long long position = player->Position;
+        QString title = Utils::getValue(player->Metadata, "xesam:title").toString();
+        QString artist = Utils::getValue(player->Metadata, "xesam:artist").toString();
+        QString album = Utils::getValue(player->Metadata, "xesam:album").toString();
+        const long long length = Utils::getValue(player->Metadata, "mpris:length").toLongLong();
+        const long long position = player->Position;
 
         QString playPauseEmoji = player->PlaybackStatus == "Playing" ? "▶️" : "⏸️";
+
+        // TODO: Do not show time if --:--/--:--
         return QString("Playing media:\n\n%1 %2 — %3\n\n[%4/%5]").arg(
             playPauseEmoji,
             artist == "" ? album : artist,
             title,
-            formatTime(position / 1e+6),
-            formatTime(length / 1e+6)
+            Utils::formatTime(position / 1e+6),
+            Utils::formatTime(length / 1e+6)
         );
     }
 
-    int getMaxPriority(std::vector<Player>& players) {
-        int maxPriority = 0;
-        for (Player& player : players) {
-            if (player.PlaybackStatus == "Playing" && player.priority > maxPriority) {
-                maxPriority = player.priority;
-            }
-        }
-
-        return maxPriority;
-    }
-
     Player* selectPlayer(std::vector<Player>& players) {
-        int maxPriority = getMaxPriority(players);
+        Player& maxPlayer = *std::ranges::max_element(players);
 
-        for (Player& player : players) {
-            if (player.PlaybackStatus == "Playing" && player.priority == maxPriority) {
-                return &player;
-            }
-        }
+        if (maxPlayer.PlaybackStatus == "Playing")
+            return &maxPlayer;
         return nullptr;
     }
 
@@ -132,13 +80,13 @@ namespace SignalStatus {
     void onExit(int code) {
         std::println("exiting... please wait");
 
-        updateProfile("No activity detected", "☕");
+        Utils::updateProfile("No activity detected", "☕");
 
         std::println("done");
         exit(0);
     }
 
-    void run() {
+    [[noreturn]] void run() {
         // TODO: Add check if signal-cli is installed
         // TODO: Add signal-cli linking
 
@@ -181,12 +129,11 @@ namespace SignalStatus {
             else
                 continue;
 
-            updateProfile(buildAbout(selectedPlayer), "🎧");
+            Utils::updateProfile(buildAbout(selectedPlayer), "🎧");
         }
     }
 } // namespace SignalStatus
 
 int main() {
     SignalStatus::run();
-    return 0;
 }
