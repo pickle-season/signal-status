@@ -1,9 +1,9 @@
 #ifndef SIGNAL_STATUS_PLAYER_H
 #define SIGNAL_STATUS_PLAYER_H
-#include <qdbusargument.h>
 #include <QDBusInterface>
-#include <qdbusreply.h>
 #include <print>
+#include <qdbusargument.h>
+#include <qdbusreply.h>
 #include <utility>
 
 namespace SignalStatus {
@@ -21,20 +21,18 @@ namespace SignalStatus {
         long long Position = 0;
 
 
-
-        bool operator== (const Player &right) const {
-            return name == right.name &&
-                   PlaybackStatus == right.PlaybackStatus &&
-                   Metadata == right.Metadata &&
-                   Position == right.Position;
+        bool operator==(const Player& right) const {
+            return name == right.name && PlaybackStatus == right.PlaybackStatus && Metadata == right.Metadata
+                && Position == right.Position;
         }
 
         void poll() {
             Metadata.clear();
             const QVariant metadataVariant = getProperty("Metadata");
 
-            if (!isValid)
+            if (!isValid) {
                 return;
+            }
 
             auto metadataMap = metadataVariant.value<QDBusArgument>();
 
@@ -46,18 +44,16 @@ namespace SignalStatus {
         }
 
     private:
-        QVariant getProperty(const std::string &property) {
+        QVariant getProperty(const std::string& property) {
             QDBusInterface interface(
-            name,
-            "/org/mpris/MediaPlayer2",
-            "org.freedesktop.DBus.Properties",
-                QDBusConnection::sessionBus()
-                );
+                name, "/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", QDBusConnection::sessionBus());
 
-            QDBusReply<QDBusVariant> reply = interface.call("Get", "org.mpris.MediaPlayer2.Player", QString::fromStdString(property));
+            QDBusReply<QDBusVariant> reply =
+                interface.call("Get", "org.mpris.MediaPlayer2.Player", QString::fromStdString(property));
             if (!reply.isValid()) {
-                const QDBusError *error = &reply.error();
-                std::println("{}: {}: {}", name.toStdString(), error->name().toStdString(), error->message().toStdString());
+                const QDBusError* error = &reply.error();
+                std::println(
+                    "{}: {}: {}", name.toStdString(), error->name().toStdString(), error->message().toStdString());
                 isValid = false;
 
                 return QVariant{};
@@ -65,6 +61,6 @@ namespace SignalStatus {
             return reply.value().variant();
         }
     };
-} // SignalStatus
+} // namespace SignalStatus
 
-#endif //SIGNAL_STATUS_PLAYER_H
+#endif // SIGNAL_STATUS_PLAYER_H
