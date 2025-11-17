@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <print>
+#include <time.h>
 #include <vector>
 
 namespace SignalStatus {
@@ -25,8 +26,8 @@ namespace SignalStatus {
             "signal-cli",
             {
                 "updateProfile",
-                "--about",
-                about,
+                "--about", about,
+                "--about-emoji", emoji
             }
         );
     }
@@ -76,12 +77,55 @@ namespace SignalStatus {
         long long position = player->Position;
 
         QString playPauseEmoji = player->PlaybackStatus == "Playing" ? "▶️" : "⏸️";
-        return QString("Listening to:\n\n%1 %2 — %3\n\n[%4/%5]").arg(
+        return QString("Playing media:\n\n%1 %2 — %3\n\n[%4/%5]").arg(
             playPauseEmoji,
             artist == "" ? album : artist,
             title,
             formatTime(position / 1e+6),
             formatTime(length / 1e+6)
+        );
+    }
+
+    int getMaxPriority(std::vector<Player>& players) {
+        int maxPriority = 0;
+        for (Player& player : players) {
+            if (player.PlaybackStatus == "Playing" && player.priority > maxPriority) {
+                maxPriority = player.priority;
+            }
+        }
+
+        return maxPriority;
+    }
+
+    Player* selectPlayer(std::vector<Player>& players) {
+        int maxPriority = getMaxPriority(players);
+
+        for (Player& player : players) {
+            if (player.PlaybackStatus == "Playing" && player.priority == maxPriority) {
+                return &player;
+            }
+        }
+        return nullptr;
+    }
+
+    bool needsRefresh(std::vector<Player>& players, const DBusInterface& interface) {
+        // needs refresh if there is any new player whose name is not in the names of players
+        return std::ranges::any_of(
+            interface.getMprisPlayers(),
+            [&](const Player& newPlayer) {
+                return !std::ranges::any_of(
+                    players,
+                    [&](const Player& player) {
+                        return player.name == newPlayer.name;
+                    }
+                );
+            } // or if any player is invalid
+        ) || std::ranges::any_of(
+            players,
+            [&](Player& player) {
+                player.poll();
+                return !player.isValid;
+            }
         );
     }
 
@@ -97,98 +141,52 @@ namespace SignalStatus {
     void run() {
         // TODO: Add check if signal-cli is installed
         // TODO: Add signal-cli linking
-        // TODO: Remove ugly foreach loops :(
 
         setbuf(stdout, nullptr);
         signal(SIGTERM, onExit);
         signal(SIGINT, onExit);
 
         std::println("Initializing signal-status");
-        DBusInterface interface = DBusInterface();
+        const auto interface = DBusInterface();
 
         std::vector<Player> players = interface.getMprisPlayers();
 
         std::vector<Player> oldPlayers = players;
-        QString selectedPlayer;
+        const Player* selectedPlayer = nullptr;
+
+        // Main service loop
         while (true) {
             sleep(1);
-            std::vector<Player> newPlayers = interface.getMprisPlayers();
-            QVector<QString> playerNames = getPlayerNames(&players);
 
-            // TODO: DO THIS WITH RANGES
-            // bool need_refresh = std::ranges::any_of(players, [&](const Player &p) {
-            // return p.name == some_name; });
-            // bool need_refresh =
-            bool refresh = false;
-            for (Player& player : newPlayers) {
-                if (!playerNames.contains(player.name)) {
-                    std::println("Found new player: {}, refreshing...", player.name.toStdString());
-
-                    refresh = true;
-                    break;
-                }
-            }
-            if (refresh) {
-                selectedPlayer = "";
-                players = interface.getMprisPlayers();
-            }
-
-            int maxPriority = 0;
-            refresh = false;
-            for (Player& player : players) {
-                player.poll();
-
-                if (!player.isValid) {
-                    std::println("Player {} is invalid, refreshing...", player.name.toStdString());
-                    selectedPlayer = "";
-
-                    // TODO: Find better way than player names
-                    refresh = true;
-                    break;
-                }
-
-                if (player.PlaybackStatus == "Playing" && player.priority > maxPriority) {
-                    maxPriority = player.priority;
-                }
-            }
-
-            if (refresh) {
+            if (needsRefresh(players, interface)) {
+                std::println("Refreshing players...");
+                selectedPlayer = nullptr;
                 players = interface.getMprisPlayers();
             }
 
             if (oldPlayers == players) {
                 continue;
             }
-
             oldPlayers = players;
 
-            // Try to select a player
-            for (Player& player : players) {
-                if (player.PlaybackStatus == "Playing" && player.name != selectedPlayer
-                    && player.priority == maxPriority) {
-                    std::println("selecting player: {}", player.name.toStdString());
-                    selectedPlayer = player.name;
+            if (
+                const Player* newSelectedPlayer = selectPlayer(players);
+                newSelectedPlayer != nullptr
+            ) {
+                if (newSelectedPlayer->name != (selectedPlayer == nullptr ? "" : selectedPlayer->name)) {
+                    std::println("selecting player: {}", newSelectedPlayer->name.toStdString());
+                    selectedPlayer = newSelectedPlayer;
                 }
             }
-
-            if (selectedPlayer == "") {
+            else
                 continue;
-            }
 
-            // Get pointer to selected player by name
-            const Player* actualPlayer = findPlayerByName(selectedPlayer, players);
-
-            if (actualPlayer == nullptr) {
-                continue;
-            }
-
-            updateProfile(buildAbout(actualPlayer), "🎧");
+            updateProfile(buildAbout(selectedPlayer), "🎧");
         }
     }
 } // namespace SignalStatus
 
 int main() {
-    // TODO: On exit set "No activity detected" or something.
     SignalStatus::run();
     return 0;
 }
