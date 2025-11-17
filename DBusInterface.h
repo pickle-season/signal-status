@@ -1,6 +1,5 @@
 #ifndef SIGNAL_STATUS_SIGNALSTATUS_H
 #define SIGNAL_STATUS_SIGNALSTATUS_H
-#include <QDBusConnection>
 #include <QDBusConnectionInterface>
 
 #include "Player.h"
@@ -11,12 +10,11 @@ namespace SignalStatus {
             DBusInterface() : iface(QDBusConnection::sessionBus().interface()) {
             }
 
-            bool isValid() {
+            [[nodiscard]] bool isValid() const {
                 return iface->isValid();
             }
 
-            std::vector<Player> getMprisPlayers()
-            {
+            [[nodiscard]] std::vector<Player> getMprisPlayers() const {
 
                 QStringList names = this->iface->registeredServiceNames().value();
 
@@ -26,11 +24,9 @@ namespace SignalStatus {
                 for (const QString &name : names) {
                     if (name.startsWith("org.mpris.MediaPlayer2.")) {
 
-                        players.push_back(
-                            Player(
+                        players.emplace_back(
                                 name,
                                 count
-                            )
                         );
                         count++;
                     }

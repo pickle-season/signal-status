@@ -1,52 +1,85 @@
+#include <complex>
 #include <iostream>
 #include <memory>
 #include <QDBusMetaType>
 #include <QDebug>
 #include <vector>
 #include <print>
+#include <QProcess>
 
 #include "DBusInterface.h"
 
 namespace SignalStatus {
-    std::string exec(const char *cmd) {
-        std::array<char, 128> buffer;
-        std::string result;
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-        if (!pipe) {
-            throw std::runtime_error("popen() failed!");
-        }
-        while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr) {
-            result += buffer.data();
-        }
-        return result;
+    // TODO: Redo everything with QStrings
+    QString runCommand(const QString &executable, const QStringList &args) {
+        QProcess p;
+        p.start(executable, args);
+        p.waitForFinished();
+
+        return p.readAll();
     }
 
-    void updateProfile(std::string about, std::string emoji) {
-        exec(
-            std::format("signal-cli updateProfile --about \"{}\" --about-emoji {} 2>&1 >/dev/null", about, emoji).c_str());
+    void updateProfile(const QString &about, const QString &emoji) {
+        runCommand(
+            "signal-cli", {"updateProfile", "--about", about});
     }
 
-    QVariant getValue(QVariantMap map, std::string key) {
-        if (map.keys().contains(QString::fromStdString(key))) {
-            return map[QString::fromStdString(key)];
+    QVariant getValue(QVariantMap map, const QString &key) {
+        if (map.keys().contains(key)) {
+            return map[key];
         }
-        return QString::fromStdString("");
+        return QString("");
     }
 
-    std::string formatTime(int totalSeconds) {
-        int hours = totalSeconds / 3600;
-        int minutes = totalSeconds % 3600 / 60;
-        int seconds = totalSeconds % 60;
+    QString formatTime(long long totalSeconds) {
+        long long hours = totalSeconds / 3600;
+        long long minutes = totalSeconds % 3600 / 60;
+        long long seconds = totalSeconds % 60;
 
         if (!hours)
-            return std::format("{}:{:02}", minutes, seconds);
-        return std::format("{}:{:02}:{:02}", hours, minutes, seconds);
+            return QString::asprintf("%lld:%02lld", minutes, seconds);
+        return QString::asprintf("%lld:%02lld:%02lld", hours, minutes, seconds);
+    }
+
+    Player *findPlayerByName(const QString &name, std::vector<Player> &players) {
+        for (Player &player: players) {
+            if (player.name == name) {
+                return &player;
+            }
+        }
+        return nullptr;
+    }
+
+    QVector<QString> getPlayerNames(std::vector<Player> *players) {
+        QVector<QString> playerNames;
+        for (Player &player: *players) {
+            playerNames.append(player.name);
+        }
+
+        return playerNames;
+    }
+
+    QString buildAbout(const Player *player) {
+        QString title = getValue(player->Metadata, "xesam:title").toString();
+        QString artist = getValue(player->Metadata, "xesam:artist").toString();
+        QString album = getValue(player->Metadata, "xesam:album").toString();
+        long long length = getValue(player->Metadata, "mpris:length").toLongLong();
+        long long position = player->Position;
+
+        QString playPauseEmoji = player->PlaybackStatus == "Playing" ? "▶️" : "⏸️";
+        return QString("Listening to:\n\n%1 %2 — %3\n\n[%4/%5]").arg(
+            playPauseEmoji,
+            artist == "" ? album : artist,
+            title,
+            formatTime(position / 1e+6),
+            formatTime(length / 1e+6)
+        );
     }
 
     void run() {
         // TODO: Remove ugly foreach loops :(
 
-        setbuf(stdout,NULL);
+        setbuf(stdout,nullptr);
 
         std::println("Initializing signal-status");
         DBusInterface interface = DBusInterface();
@@ -54,30 +87,41 @@ namespace SignalStatus {
         std::vector<Player> players = interface.getMprisPlayers();
 
         std::vector<Player> oldPlayers = players;
-        Player *selectedPlayer = nullptr;
+        QString selectedPlayer;
         while (true) {
             sleep(1);
             std::vector<Player> newPlayers = interface.getMprisPlayers();
-            QVector<std::string> player_names = {};
-            for (Player &player: players) {
-                player_names.append(player.name);
-            }
+            QVector<QString> playerNames = getPlayerNames(&players);
 
+            // TODO: DO THIS WITH RANGES
+            // bool need_refresh = std::ranges::any_of(players, [&](const Player &p) { return p.name == some_name; });
+            //bool need_refresh =
+            bool refresh = false;
             for (Player &player: newPlayers) {
-                if (!player_names.contains(player.name)) {
-                    std::println("Found new player: {}, refreshing...", player.name);
-                    selectedPlayer = nullptr;
-                    players = newPlayers;
+                if (!playerNames.contains(player.name)) {
+                    std::println("Found new player: {}, refreshing...", player.name.toStdString());
+
+                    refresh = true;
+                    break;
                 }
             }
+            if (refresh) {
+                selectedPlayer = "";
+                players = interface.getMprisPlayers();
+            }
+
             int maxPriority = 0;
+            refresh = false;
             for (Player &player: players) {
                 player.poll();
 
                 if (!player.isValid) {
-                    std::println("Player {} is invalid, refreshing...", player.name);
-                    selectedPlayer = nullptr;
-                    players = interface.getMprisPlayers();
+                    std::println("Player {} is invalid, refreshing...", player.name.toStdString());
+                    selectedPlayer = "";
+
+                    // TODO: Find better way than player names
+                    refresh = true;
+                    break;
                 }
 
                 if (player.PlaybackStatus == "Playing" && player.priority > maxPriority) {
@@ -85,43 +129,31 @@ namespace SignalStatus {
                 }
             }
 
+            if (refresh)
+                players = interface.getMprisPlayers();
+
             if (oldPlayers == players) {
                 continue;
             }
 
             oldPlayers = players;
 
+            // Try to select a player
             for (Player &player: players) {
-                std::string playerName = "";
-
-                if (selectedPlayer != nullptr) {
-                    playerName = selectedPlayer->name;
-                }
-
-                if (player.PlaybackStatus == "Playing" && player.name != playerName && player.priority == maxPriority) {
-                    std::println("selecting player: {}", player.name);
-                    selectedPlayer = &player;
+                if (player.PlaybackStatus == "Playing" && player.name != selectedPlayer && player.priority == maxPriority) {
+                    std::println("selecting player: {}", player.name.toStdString());
+                    selectedPlayer = player.name;
                 }
             }
 
-            if (selectedPlayer == nullptr) continue;
+            if (selectedPlayer == "") continue;
 
-            std::string title = getValue(selectedPlayer->Metadata, "xesam:title").toString().toStdString();
-            std::string artist = getValue(selectedPlayer->Metadata, "xesam:artist").toString().toStdString();
-            std::string album = getValue(selectedPlayer->Metadata, "xesam:album").toString().toStdString();
-            long long length = getValue(selectedPlayer->Metadata, "mpris:length").toLongLong();
-            long long position = selectedPlayer->Position;
+            // Get pointer to selected player by name
+            const Player *actualPlayer = findPlayerByName(selectedPlayer, players);
 
-            std::string playPauseEmoji = selectedPlayer->PlaybackStatus == "Playing" ? "▶️" : "⏸️";
-            std::string about = std::format(
-                "Listening to:\n\n{} {} — {}\n\n[{}/{}]",
-                playPauseEmoji,
-                artist=="" ? album : artist,
-                title,
-                formatTime(position / 1e+6),
-                formatTime(length / 1e+6)
-            );
-            updateProfile(about, "🎧");
+            if (actualPlayer == nullptr) continue;
+
+            updateProfile(buildAbout(actualPlayer), "🎧");
         }
     }
 }

@@ -1,33 +1,29 @@
 #ifndef SIGNAL_STATUS_PLAYER_H
 #define SIGNAL_STATUS_PLAYER_H
-#include <memory>
 #include <qdbusargument.h>
 #include <QDBusInterface>
 #include <qdbusreply.h>
 #include <print>
+#include <utility>
 
 namespace SignalStatus {
     class Player {
 
     public:
-        Player(QString name, int priority) : priority(priority) {
-            this->name = name.toStdString();
-        }
+        Player(QString name, const int priority) : name(std::move(name)), priority(priority) {}
 
         // TODO: Maybe change these to QStrings?
-        std::string name;
+        QString name;
         int priority;
         bool isValid = true;
-        //std::string Shuffle;
-        std::string PlaybackStatus;
+        QString PlaybackStatus;
         QVariantMap Metadata;
-        long long Position;
+        long long Position = 0;
 
 
 
         bool operator== (const Player &right) const {
             return name == right.name &&
-                   //Shuffle == right.Shuffle &&
                    PlaybackStatus == right.PlaybackStatus &&
                    Metadata == right.Metadata &&
                    Position == right.Position;
@@ -35,22 +31,24 @@ namespace SignalStatus {
 
         void poll() {
             Metadata.clear();
-            const QDBusArgument metadataMap = getProperty("Metadata").value<QDBusArgument>();
+            const QVariant metadataVariant = getProperty("Metadata");
 
             if (!isValid)
                 return;
 
+            auto metadataMap = metadataVariant.value<QDBusArgument>();
+
             metadataMap >> Metadata;
 
-            PlaybackStatus = getProperty("PlaybackStatus").toString().toStdString();
-            //Shuffle = getProperty("Shuffle").toString().toStdString();
+            PlaybackStatus = getProperty("PlaybackStatus").toString();
+            // TODO: Check if position is valid
             Position = getProperty("Position").toLongLong();
         }
 
     private:
-        QVariant getProperty(std::string property) {
+        QVariant getProperty(const std::string &property) {
             QDBusInterface interface(
-                QString::fromStdString(name),
+            name,
             "/org/mpris/MediaPlayer2",
             "org.freedesktop.DBus.Properties",
                 QDBusConnection::sessionBus()
@@ -58,11 +56,11 @@ namespace SignalStatus {
 
             QDBusReply<QDBusVariant> reply = interface.call("Get", "org.mpris.MediaPlayer2.Player", QString::fromStdString(property));
             if (!reply.isValid()) {
-                QDBusError error = reply.error();
-                std::println("{}: {}: {}", name, error.name().toStdString(), error.message().toStdString());
+                const QDBusError *error = &reply.error();
+                std::println("{}: {}: {}", name.toStdString(), error->name().toStdString(), error->message().toStdString());
                 isValid = false;
 
-                return QVariant();
+                return QVariant{};
             }
             return reply.value().variant();
         }
