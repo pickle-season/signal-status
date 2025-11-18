@@ -10,9 +10,9 @@ namespace SignalStatus::Utils {
         p.waitForFinished();
 
         //QString std_out = p.readAllStandardOutput();
-        QString std_err = p.readAllStandardError();
 
-        if (std_err != "") std::println("WARNING: command returned stderr: {}", std_err.toStdString());
+        if (QString std_err = p.readAllStandardError(); std_err != "")
+            std::println("WARNING: command returned stderr: {}", std_err.toStdString());
         return p.readAll();
     }
 

@@ -94,17 +94,18 @@ namespace SignalStatus {
 } // namespace SignalStatus
 
 namespace std {
-    template<> struct hash<SignalStatus::Player> {
+    template <>
+    struct hash<SignalStatus::Player> {
         std::size_t operator()(const SignalStatus::Player& player) const noexcept {
-            std::size_t h_name = std::hash<QString>{}(player.name);
-            std::size_t h_isValid = std::hash<bool>{}(player.isValid);
-            std::size_t h_PlaybackStatus = std::hash<QString>{}(player.PlaybackStatus);
-            std::size_t h_Position = std::hash<long long>{}(player.Position);
+            const std::size_t h_name = std::hash<QString>{}(player.name);
+            const std::size_t h_isValid = std::hash<bool>{}(player.isValid);
+            const std::size_t h_PlaybackStatus = std::hash<QString>{}(player.PlaybackStatus);
+            const std::size_t h_Position = std::hash<long long>{}(player.Position);
 
             std::size_t result = h_name ^ (h_isValid << 1) ^ (h_PlaybackStatus << 2) ^ (h_Position << 3);
 
             std::size_t shift = 4;
-            for (QVariant const &data : player.Metadata) {
+            for (QVariant const& data : player.Metadata) {
                 result ^= (std::hash<QString>{}(data.toString()) << shift);
                 shift++;
             }
@@ -113,12 +114,13 @@ namespace std {
         }
     };
 
-    template<> struct hash<vector<SignalStatus::Player>> {
+    template <>
+    struct hash<vector<SignalStatus::Player>> {
         std::size_t operator()(const std::vector<SignalStatus::Player>& playerVector) const noexcept {
             std::size_t result = 0;
 
             std::size_t shift = 0;
-            for (const  SignalStatus::Player &player : playerVector) {
+            for (const SignalStatus::Player& player : playerVector) {
                 result ^= (std::hash<SignalStatus::Player>{}(player) << shift);
                 shift++;
             }
@@ -126,9 +128,6 @@ namespace std {
             return result;
         }
     };
-
-
 }
 
 #endif // SIGNAL_STATUS_PLAYER_H
-

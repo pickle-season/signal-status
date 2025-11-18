@@ -4,13 +4,10 @@
 #include <QDBusConnectionInterface>
 
 namespace SignalStatus {
+    // TODO: Move functionality from this class to Session
     class DBusInterface {
         public:
             DBusInterface() : iface(QDBusConnection::sessionBus().interface()) {}
-
-            [[nodiscard]] bool isValid() const {
-                return iface->isValid();
-            }
 
             [[nodiscard]] std::vector<Player> getMprisPlayers() const {
                 QStringList names = this->iface->registeredServiceNames().value();

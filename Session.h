@@ -57,8 +57,8 @@ namespace SignalStatus {
                 return std::hash<std::vector<Player>>{}(players);
             };
 
-            QString buildAbout() {
-                QString title = selectedPlayer->Metadata["xesam:tite"].toString();
+            [[nodiscard]] QString buildAbout() const {
+                QString title = selectedPlayer->Metadata["xesam:title"].toString();
                 QString artist = selectedPlayer->Metadata["xesam:artist"].toString();
                 QString album = selectedPlayer->Metadata["xesam:album"].toString();
                 const long long length = selectedPlayer->Metadata["mpris:length"].toLongLong();
@@ -76,7 +76,7 @@ namespace SignalStatus {
                 );
             }
 
-            void updateProfile() {
+            void updateProfile() const {
                 Utils::updateProfile(buildAbout(), "🎧");
             }
 
