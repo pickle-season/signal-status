@@ -1,4 +1,3 @@
-#include "DBusInterface.h"
 #include <QDBusMetaType>
 #include <QDebug>
 #include <csignal>
@@ -11,24 +10,17 @@
 #include "Session.h"
 
 namespace SignalStatus {
-    // TODO: Move to utils
-    void onExit(int code) {
-        qInfo() << "Exiting... please wait";
-
-        Utils::updateProfile("No activity detected", "☕");
-
-        qInfo() << "Done";
-        exit(0);
-    }
-
     // TODO: Move to session probably as something like runLoop()
-    [[noreturn]] void run() {
+    [[noreturn]] void run(const Utils::LogLevel logLevel) {
+        Utils::LOG_LEVEL = logLevel;
+
+        qInstallMessageHandler(Utils::messageOutput);
         // TODO: Add check if signal-cli is installed
         // TODO: Add signal-cli linking
 
         setbuf(stdout, nullptr);
-        signal(SIGTERM, onExit);
-        signal(SIGINT, onExit);
+        signal(SIGTERM, Utils::onExit);
+        signal(SIGINT, Utils::onExit);
 
         qInfo() << "Initializing signal-status";
 
@@ -60,6 +52,8 @@ namespace SignalStatus {
     }
 } // namespace SignalStatus
 
-int main() {
-    SignalStatus::run();
+int main(int argc, char* argv[]) {
+    SignalStatus::run(
+        SignalStatus::Utils::getLogLevel(argc, argv)
+    );
 }

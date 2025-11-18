@@ -1,6 +1,8 @@
 #ifndef SIGNAL_STATUS_SESSION_H
 #define SIGNAL_STATUS_SESSION_H
-#include "DBusInterface.h"
+#include <QDBusConnectionInterface>
+
+#include "Player.h"
 
 namespace SignalStatus {
     class Session {
@@ -12,8 +14,11 @@ namespace SignalStatus {
                 Player* newSelectedPlayer = nullptr;
                 Player& maxPlayer = *std::ranges::max_element(players);
 
-                if (maxPlayer.PlaybackStatus == "Playing")
+                if (maxPlayer.PlaybackStatus == "Playing" || selectedPlayer != nullptr)
                     newSelectedPlayer = &maxPlayer;
+
+                if (selectedPlayer != nullptr && maxPlayer.PlaybackStatus != "Playing")
+                    return true;
 
                 if (newSelectedPlayer != nullptr) {
                     if (newSelectedPlayer->name != (selectedPlayer == nullptr ? "" : selectedPlayer->name)) {
@@ -29,13 +34,13 @@ namespace SignalStatus {
             void refreshPlayers() {
                 qInfo() << "Refreshing players...";
                 selectedPlayer = nullptr;
-                players = interface.getMprisPlayers();
+                players = getMprisPlayers();
             }
 
             bool needsRefresh() {
                 // needs refresh if there is any new player whose name is not in the names of players
                 return std::ranges::any_of(
-                    interface.getMprisPlayers(),
+                    getMprisPlayers(),
                     [&](const Player& newPlayer) {
                         return !std::ranges::any_of(
                             players,
@@ -80,9 +85,27 @@ namespace SignalStatus {
                 Utils::updateProfile(buildAbout(), "🎧");
             }
 
+
+            [[nodiscard]] std::vector<Player> getMprisPlayers() const {
+                QStringList names = interface->registeredServiceNames().value();
+
+                std::vector<Player> foundPlayers;
+
+                std::ranges::sort(names);
+
+                for (const QString& name : names) {
+                    if (name.startsWith("org.mpris.MediaPlayer2.")) {
+                        foundPlayers.emplace_back(name);
+                    }
+                }
+
+                return foundPlayers;
+            }
+
         private:
             std::vector<Player> players;
-            const DBusInterface interface = DBusInterface();
+
+            QDBusConnectionInterface* interface = QDBusConnection::sessionBus().interface();
             Player* selectedPlayer = nullptr;
     };
 } // SignalStatus
