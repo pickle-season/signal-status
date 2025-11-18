@@ -78,12 +78,10 @@ namespace SignalStatus {
                     interface.call("Get", "org.mpris.MediaPlayer2.Player", QString::fromStdString(property));
                 if (!reply.isValid()) {
                     const QDBusError* error = &reply.error();
-                    std::println(
-                        "{}: {}: {}",
-                        name.toStdString(),
-                        error->name().toStdString(),
-                        error->message().toStdString()
-                    );
+                    qWarning() << name.toStdString() << ":"
+                        << error->name().toStdString() << ":"
+                        << error->message().toStdString();
+
                     isValid = false;
 
                     return {};

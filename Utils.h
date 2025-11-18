@@ -11,8 +11,8 @@ namespace SignalStatus::Utils {
 
         //QString std_out = p.readAllStandardOutput();
 
-        if (QString std_err = p.readAllStandardError(); std_err != "")
-            std::println("WARNING: command returned stderr: {}", std_err.toStdString());
+        if (const QString std_err = p.readAllStandardError(); std_err != "")
+            qWarning() << "Command returned stderr:" << std_err;
         return p.readAll();
     }
 
@@ -33,7 +33,7 @@ namespace SignalStatus::Utils {
         const long long minutes = totalSeconds % 3600 / 60;
         const long long seconds = totalSeconds % 60;
 
-        // TODO use --:-- when unknown time or 0:00
+        // TODO: use --:-- when unknown time or 0:00
 
         if (!(hours || minutes || seconds)) {
             return {"--:--"};

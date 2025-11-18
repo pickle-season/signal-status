@@ -17,7 +17,7 @@ namespace SignalStatus {
 
                 if (newSelectedPlayer != nullptr) {
                     if (newSelectedPlayer->name != (selectedPlayer == nullptr ? "" : selectedPlayer->name)) {
-                        std::println("selecting player: {}", newSelectedPlayer->name.toStdString());
+                        qInfo() << "Selecting player:" << newSelectedPlayer->name;
                         selectedPlayer = newSelectedPlayer;
                     }
                     if (selectedPlayer != nullptr)
@@ -27,7 +27,7 @@ namespace SignalStatus {
             }
 
             void refreshPlayers() {
-                std::println("Refreshing players...");
+                qInfo() << "Refreshing players...";
                 selectedPlayer = nullptr;
                 players = interface.getMprisPlayers();
             }

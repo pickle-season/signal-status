@@ -11,15 +11,17 @@
 #include "Session.h"
 
 namespace SignalStatus {
+    // TODO: Move to utils
     void onExit(int code) {
-        std::println("exiting... please wait");
+        qInfo() << "Exiting... please wait";
 
         Utils::updateProfile("No activity detected", "☕");
 
-        std::println("done");
+        qInfo() << "Done";
         exit(0);
     }
 
+    // TODO: Move to session probably as something like runLoop()
     [[noreturn]] void run() {
         // TODO: Add check if signal-cli is installed
         // TODO: Add signal-cli linking
@@ -28,7 +30,7 @@ namespace SignalStatus {
         signal(SIGTERM, onExit);
         signal(SIGINT, onExit);
 
-        std::println("Initializing signal-status");
+        qInfo() << "Initializing signal-status";
 
         Session session;
 
