@@ -53,4 +53,5 @@ namespace SignalStatus::Utils {
     }
 }
 
+
 #endif //SIGNAL_STATUS_UTILS_H

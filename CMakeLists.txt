@@ -11,6 +11,7 @@ qt_add_executable(signal-status main.cpp
         Player.h
         DBusInterface.h
         Utils.h
+        Session.h
 )
 
 target_link_libraries(signal-status PRIVATE Qt6::Core Qt::DBus)
