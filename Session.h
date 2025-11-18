@@ -14,10 +14,10 @@ namespace SignalStatus {
                 Player* newSelectedPlayer = nullptr;
                 Player& maxPlayer = *std::ranges::max_element(players);
 
-                if (maxPlayer.playbackStatus == Player::PLAYING || selectedPlayer != nullptr)
+                if (maxPlayer.playbackStatus == PLAYING || selectedPlayer != nullptr)
                     newSelectedPlayer = &maxPlayer;
 
-                if (selectedPlayer != nullptr && maxPlayer.playbackStatus != Player::PLAYING)
+                if (selectedPlayer != nullptr && maxPlayer.playbackStatus != PLAYING)
                     return true;
 
                 if (newSelectedPlayer != nullptr) {
@@ -69,7 +69,7 @@ namespace SignalStatus {
                 const long long length = selectedPlayer->metadata["mpris:length"].toLongLong();
                 const long long position = selectedPlayer->position;
 
-                QString playPauseEmoji = selectedPlayer->playbackStatus == Player::PLAYING ? "▶️" : "⏸️";
+                QString playPauseEmoji = selectedPlayer->playbackStatus == PLAYING ? "▶️" : "⏸️";
 
                 // TODO: Do not show time if --:--/--:--
                 return QString("Playing media:\n\n%1 %2 — %3\n\n[%4/%5]").arg(

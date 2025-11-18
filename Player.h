@@ -9,20 +9,20 @@
 
 
 namespace SignalStatus {
+    enum PlaybackStatus {
+        STOPPED,
+        PAUSED,
+        PLAYING,
+    };
+
     class Player {
         public:
             explicit Player(QString name) : name(std::move(name)) {}
 
-            enum PlaybackStatus {
-                PLAYING,
-                PAUSED,
-                STOPPED
-            };
-
-             std::map<std::string, QVariant> stateMap{
-                 {"Playing", PLAYING},
-                 {"Paused", PAUSED},
-                 {"Stopped", STOPPED},
+            std::map<std::string, PlaybackStatus> statusMap{
+                {"Stopped", STOPPED},
+                {"Paused", PAUSED},
+                {"Playing", PLAYING},
             };
 
             // TODO: Change PlaybackStatus to Enum
@@ -41,16 +41,17 @@ namespace SignalStatus {
             }
 
             bool operator<(const Player& other) const {
-                if (playbackStatus != PLAYING && other.playbackStatus == PLAYING) return true;
-                if (other.playbackStatus != PLAYING && playbackStatus == PLAYING) return false;
+                if (playbackStatus != other.playbackStatus)
+                    return playbackStatus < other.playbackStatus;
 
                 return name.length() > other.name.length();
             }
 
             auto operator<=>(const Player& other) const {
-                if (playbackStatus == PLAYING && other.playbackStatus != PLAYING)
+                // TODO: Find a better way to do this maybe?
+                if (playbackStatus > other.playbackStatus)
                     return std::strong_ordering::greater;
-                if (playbackStatus != PLAYING && other.playbackStatus == PLAYING)
+                if (playbackStatus < other.playbackStatus)
                     return std::strong_ordering::less;
 
                 return name.length() <=> other.name.length();
@@ -68,7 +69,7 @@ namespace SignalStatus {
 
                 metadataMap >> metadata;
 
-                playbackStatus = static_cast<enum PlaybackStatus>(getProperty("PlaybackStatus").toInt());
+                playbackStatus = statusMap[getProperty("PlaybackStatus").toString().toStdString()];
                 position = getProperty("Position").toLongLong();
 
                 // set position to 0 when length is also 0
@@ -110,7 +111,7 @@ namespace std {
         std::size_t operator()(const SignalStatus::Player& player) const noexcept {
             const std::size_t h_name = std::hash<QString>{}(player.name);
             const std::size_t h_isValid = std::hash<bool>{}(player.isValid);
-            const std::size_t h_PlaybackStatus = std::hash<SignalStatus::Player::PlaybackStatus>{}(player.playbackStatus);
+            const std::size_t h_PlaybackStatus = std::hash<SignalStatus::PlaybackStatus>{}(player.playbackStatus);
             const std::size_t h_Position = std::hash<long long>{}(player.position);
 
             std::size_t result = h_name ^ (h_isValid << 1) ^ (h_PlaybackStatus << 2) ^ (h_Position << 3);

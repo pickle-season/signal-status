@@ -11,6 +11,7 @@ namespace SignalStatus::Utils {
         CRITICAL,
         FATAL,
     };
+
     inline std::map<LogLevel, QString> levelMap = {
         {DEBUG, "DEBUG"},
         {INFO, "INFO"},
@@ -28,7 +29,7 @@ namespace SignalStatus::Utils {
 
     inline LogLevel LOG_LEVEL;
 
-    inline void messageOutput(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
+    inline void messageOutput(const QtMsgType type, const QMessageLogContext& context, const QString& msg) {
         const LogLevel logLevel = Qt2SS[type];
         if (logLevel < LOG_LEVEL) return;
 
@@ -80,8 +81,11 @@ namespace SignalStatus::Utils {
     inline LogLevel getLogLevel(const int argc, char* argv[]) {
         for (int i = 1; i < argc; i++) {
             if (!strcmp(argv[i], "--log-level")) {
-                if (i+1 < argc) {
-                    return (*std::ranges::find_if(SignalStatus::Utils::levelMap, [argv, i](const auto& element){return argv[i+1] == element.second;})).first;
+                if (i + 1 < argc) {
+                    return (*std::ranges::find_if(
+                        SignalStatus::Utils::levelMap,
+                        [argv, i](const auto& element) { return argv[i + 1] == element.second; }
+                    )).first;
                 }
             }
         }
@@ -96,7 +100,6 @@ namespace SignalStatus::Utils {
         qInfo() << "Done";
         exit(0);
     }
-
 }
 
 

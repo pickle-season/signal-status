@@ -52,7 +52,7 @@ namespace SignalStatus {
     }
 } // namespace SignalStatus
 
-int main(int argc, char* argv[]) {
+int main(const int argc, char* argv[]) {
     SignalStatus::run(
         SignalStatus::Utils::getLogLevel(argc, argv)
     );
