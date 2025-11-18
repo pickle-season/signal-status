@@ -67,6 +67,7 @@ namespace SignalStatus {
             }
 
         private:
+            // TODO: Refactor out remaining std::string
             QVariant getProperty(const std::string& property) {
                 QDBusInterface interface(
                     name,
