@@ -43,8 +43,8 @@ namespace SignalStatus::Utils {
 
         //QString std_out = p.readAllStandardOutput();
 
-        if (const QString std_err = p.readAllStandardError(); std_err != "")
-            qWarning() << "Command returned stderr:" << std_err;
+        if (const QString stdErr = p.readAllStandardError(); stdErr != "")
+            qWarning() << "Command returned stderr:" << stdErr;
         return p.readAll();
     }
 

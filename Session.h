@@ -14,10 +14,10 @@ namespace SignalStatus {
                 Player* newSelectedPlayer = nullptr;
                 Player& maxPlayer = *std::ranges::max_element(players);
 
-                if (maxPlayer.PlaybackStatus == "Playing" || selectedPlayer != nullptr)
+                if (maxPlayer.playbackStatus == Player::PLAYING || selectedPlayer != nullptr)
                     newSelectedPlayer = &maxPlayer;
 
-                if (selectedPlayer != nullptr && maxPlayer.PlaybackStatus != "Playing")
+                if (selectedPlayer != nullptr && maxPlayer.playbackStatus != Player::PLAYING)
                     return true;
 
                 if (newSelectedPlayer != nullptr) {
@@ -63,13 +63,13 @@ namespace SignalStatus {
             };
 
             [[nodiscard]] QString buildAbout() const {
-                QString title = selectedPlayer->Metadata["xesam:title"].toString();
-                QString artist = selectedPlayer->Metadata["xesam:artist"].toString();
-                QString album = selectedPlayer->Metadata["xesam:album"].toString();
-                const long long length = selectedPlayer->Metadata["mpris:length"].toLongLong();
-                const long long position = selectedPlayer->Position;
+                QString title = selectedPlayer->metadata["xesam:title"].toString();
+                QString artist = selectedPlayer->metadata["xesam:artist"].toString();
+                QString album = selectedPlayer->metadata["xesam:album"].toString();
+                const long long length = selectedPlayer->metadata["mpris:length"].toLongLong();
+                const long long position = selectedPlayer->position;
 
-                QString playPauseEmoji = selectedPlayer->PlaybackStatus == "Playing" ? "▶️" : "⏸️";
+                QString playPauseEmoji = selectedPlayer->playbackStatus == Player::PLAYING ? "▶️" : "⏸️";
 
                 // TODO: Do not show time if --:--/--:--
                 return QString("Playing media:\n\n%1 %2 — %3\n\n[%4/%5]").arg(

@@ -1,7 +1,6 @@
 #ifndef SIGNAL_STATUS_PLAYER_H
 #define SIGNAL_STATUS_PLAYER_H
 #include <QDBusInterface>
-#include <print>
 #include <qdbusargument.h>
 #include <qdbusreply.h>
 #include <utility>
@@ -14,39 +13,51 @@ namespace SignalStatus {
         public:
             explicit Player(QString name) : name(std::move(name)) {}
 
+            enum PlaybackStatus {
+                PLAYING,
+                PAUSED,
+                STOPPED
+            };
+
+             std::map<std::string, QVariant> stateMap{
+                 {"Playing", PLAYING},
+                 {"Paused", PAUSED},
+                 {"Stopped", STOPPED},
+            };
+
             // TODO: Change PlaybackStatus to Enum
             QString name;
             bool isValid = true;
-            QString PlaybackStatus;
-            QVariantMap Metadata;
-            long long Position = 0;
+            PlaybackStatus playbackStatus = STOPPED;
+            QVariantMap metadata;
+            long long position = 0;
 
 
             bool operator==(const Player& right) const {
                 return name == right.name
-                    && PlaybackStatus == right.PlaybackStatus
-                    && Metadata == right.Metadata
-                    && Position == right.Position;
+                    && playbackStatus == right.playbackStatus
+                    && metadata == right.metadata
+                    && position == right.position;
             }
 
             bool operator<(const Player& other) const {
-                if (PlaybackStatus != "Playing" && other.PlaybackStatus == "Playing") return true;
-                if (other.PlaybackStatus != "Playing" && PlaybackStatus == "Playing") return false;
+                if (playbackStatus != PLAYING && other.playbackStatus == PLAYING) return true;
+                if (other.playbackStatus != PLAYING && playbackStatus == PLAYING) return false;
 
                 return name.length() > other.name.length();
             }
 
             auto operator<=>(const Player& other) const {
-                if (PlaybackStatus == "Playing" && other.PlaybackStatus != "Playing")
+                if (playbackStatus == PLAYING && other.playbackStatus != PLAYING)
                     return std::strong_ordering::greater;
-                if (PlaybackStatus != "Playing" && other.PlaybackStatus == "Playing")
+                if (playbackStatus != PLAYING && other.playbackStatus == PLAYING)
                     return std::strong_ordering::less;
 
                 return name.length() <=> other.name.length();
             }
 
             void poll() {
-                Metadata.clear();
+                metadata.clear();
                 const QVariant metadataVariant = getProperty("Metadata");
 
                 if (!isValid) {
@@ -55,14 +66,14 @@ namespace SignalStatus {
 
                 const auto metadataMap = metadataVariant.value<QDBusArgument>();
 
-                metadataMap >> Metadata;
+                metadataMap >> metadata;
 
-                PlaybackStatus = getProperty("PlaybackStatus").toString();
-                Position = getProperty("Position").toLongLong();
+                playbackStatus = static_cast<enum PlaybackStatus>(getProperty("PlaybackStatus").toInt());
+                position = getProperty("Position").toLongLong();
 
                 // set position to 0 when length is also 0
-                if (!Metadata["mpris:length"].toLongLong()) {
-                    Position = 0;
+                if (!metadata["mpris:length"].toLongLong()) {
+                    position = 0;
                 }
             }
 
@@ -99,13 +110,13 @@ namespace std {
         std::size_t operator()(const SignalStatus::Player& player) const noexcept {
             const std::size_t h_name = std::hash<QString>{}(player.name);
             const std::size_t h_isValid = std::hash<bool>{}(player.isValid);
-            const std::size_t h_PlaybackStatus = std::hash<QString>{}(player.PlaybackStatus);
-            const std::size_t h_Position = std::hash<long long>{}(player.Position);
+            const std::size_t h_PlaybackStatus = std::hash<SignalStatus::Player::PlaybackStatus>{}(player.playbackStatus);
+            const std::size_t h_Position = std::hash<long long>{}(player.position);
 
             std::size_t result = h_name ^ (h_isValid << 1) ^ (h_PlaybackStatus << 2) ^ (h_Position << 3);
 
             std::size_t shift = 4;
-            for (QVariant const& data : player.Metadata) {
+            for (QVariant const& data : player.metadata) {
                 result ^= (std::hash<QString>{}(data.toString()) << shift);
                 shift++;
             }
