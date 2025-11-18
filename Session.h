@@ -19,8 +19,9 @@ namespace SignalStatus {
                     if (newSelectedPlayer->name != (selectedPlayer == nullptr ? "" : selectedPlayer->name)) {
                         std::println("selecting player: {}", newSelectedPlayer->name.toStdString());
                         selectedPlayer = newSelectedPlayer;
-                        return true;
                     }
+                    if (selectedPlayer != nullptr)
+                        return true;
                 }
                 return false;
             }
@@ -57,10 +58,10 @@ namespace SignalStatus {
             };
 
             QString buildAbout() {
-                QString title = Utils::getValue(selectedPlayer->Metadata, "xesam:title").toString();
-                QString artist = Utils::getValue(selectedPlayer->Metadata, "xesam:artist").toString();
-                QString album = Utils::getValue(selectedPlayer->Metadata, "xesam:album").toString();
-                const long long length = Utils::getValue(selectedPlayer->Metadata, "mpris:length").toLongLong();
+                QString title = selectedPlayer->Metadata["xesam:tite"].toString();
+                QString artist = selectedPlayer->Metadata["xesam:artist"].toString();
+                QString album = selectedPlayer->Metadata["xesam:album"].toString();
+                const long long length = selectedPlayer->Metadata["mpris:length"].toLongLong();
                 const long long position = selectedPlayer->Position;
 
                 QString playPauseEmoji = selectedPlayer->PlaybackStatus == "Playing" ? "▶️" : "⏸️";

@@ -61,7 +61,7 @@ namespace SignalStatus {
                 Position = getProperty("Position").toLongLong();
 
                 // set position to 0 when length is also 0
-                if (!Utils::getValue(Metadata, "mpris:length").toLongLong())
+                if (!Metadata["mpris:length"].toLongLong())
                     Position = 0;
             }
 

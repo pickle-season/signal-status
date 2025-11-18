@@ -4,13 +4,6 @@
 #include <qvariant.h>
 
 namespace SignalStatus::Utils {
-    inline QVariant getValue(QVariantMap map, const QString& key) {
-        if (map.keys().contains(key)) {
-            return map[key];
-        }
-        return QString("");
-    }
-
     inline QString runCommand(const QString& executable, const QStringList& args) {
         QProcess p;
         p.start(executable, args);
