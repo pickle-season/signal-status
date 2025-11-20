@@ -13,32 +13,19 @@ namespace SignalStatus {
             void updateSelectedPlayer() {
                 Player& maxPlayer = *std::ranges::max_element(players);
 
+                // If nothing changed, return
+                if (selectedPlayer == &maxPlayer)
+                    return;
+
+                // If the newly selected player is stopped or paused, we do not update because
+                // we want to remember the last player that was playing media.
+                // In other words, if no players are playing, selectedPlayer will not update
+                if (maxPlayer.playbackStatus == PAUSED || maxPlayer.playbackStatus == STOPPED)
+                    return;
+
+                qInfo() << "Selecting player:" << maxPlayer.name;
                 selectedPlayer = &maxPlayer;
             }
-
-            // returns true if succeeded, false if not
-            // bool selectPlayer() {
-            //     // Steam has precedence, so first check if a SteamProcess is running
-            //
-            //     Player* newSelectedPlayer = nullptr;
-            //     Player& maxPlayer = *std::ranges::max_element(players);
-            //
-            //     if (maxPlayer.playbackStatus == PLAYING || selectedPlayer != nullptr)
-            //         newSelectedPlayer = &maxPlayer;
-            //
-            //     if (selectedPlayer != nullptr && maxPlayer.playbackStatus != PLAYING)
-            //         return true;
-            //
-            //     if (newSelectedPlayer != nullptr) {
-            //         if (newSelectedPlayer->name != (selectedPlayer == nullptr ? "" : selectedPlayer->name)) {
-            //             qInfo() << "Selecting player:" << newSelectedPlayer->name;
-            //             selectedPlayer = newSelectedPlayer;
-            //         }
-            //         if (selectedPlayer != nullptr)
-            //             return true;
-            //     }
-            //     return false;
-            // }
 
             void refreshPlayers() {
                 qInfo() << "Refreshing players...";
