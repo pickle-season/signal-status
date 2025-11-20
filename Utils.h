@@ -17,6 +17,14 @@ namespace SignalStatus::Utils {
         FATAL,
     };
 
+    inline std::map<LogLevel, QString> colorMap = {
+        {DEBUG, "\x1b[34m"},
+        {INFO, "\x1b[32m"},
+        {WARNING, "\x1b[33m"},
+        {CRITICAL, "\x1b[31m"},
+        {FATAL, "\x1b[31m"},
+    };
+
     inline std::map<LogLevel, QString> levelMap = {
         {DEBUG, "DEBUG"},
         {INFO, "INFO"},
@@ -40,7 +48,7 @@ namespace SignalStatus::Utils {
         if (logLevel < LOG_LEVEL) return;
 
         QTextStream cout(stdout, QIODevice::WriteOnly);
-        cout << levelMap[logLevel] << ": " << msg << Qt::endl;
+        cout << colorMap[logLevel] << levelMap[logLevel] << ": " << "\x1b[0m" << msg << Qt::endl;
     }
 
     inline QString runCommand(const QString& executable, const QStringList& args) {
