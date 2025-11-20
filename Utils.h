@@ -34,6 +34,7 @@ namespace SignalStatus::Utils {
 
     inline LogLevel LOG_LEVEL;
 
+    // TODO: Add color codeding to levels
     inline void messageOutput(const QtMsgType type, const QMessageLogContext& context, const QString& msg) {
         const LogLevel logLevel = Qt2SS[type];
         if (logLevel < LOG_LEVEL) return;
