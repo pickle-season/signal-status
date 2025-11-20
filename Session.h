@@ -3,33 +3,42 @@
 #include <QDBusConnectionInterface>
 
 #include "Player.h"
+#include "SteamProcess.h"
 
 namespace SignalStatus {
     class Session {
         public:
             Session() = default;
 
-            // returns true if succeeded, false if not
-            bool selectPlayer() {
-                Player* newSelectedPlayer = nullptr;
+            void updateSelectedPlayer() {
                 Player& maxPlayer = *std::ranges::max_element(players);
 
-                if (maxPlayer.playbackStatus == PLAYING || selectedPlayer != nullptr)
-                    newSelectedPlayer = &maxPlayer;
-
-                if (selectedPlayer != nullptr && maxPlayer.playbackStatus != PLAYING)
-                    return true;
-
-                if (newSelectedPlayer != nullptr) {
-                    if (newSelectedPlayer->name != (selectedPlayer == nullptr ? "" : selectedPlayer->name)) {
-                        qInfo() << "Selecting player:" << newSelectedPlayer->name;
-                        selectedPlayer = newSelectedPlayer;
-                    }
-                    if (selectedPlayer != nullptr)
-                        return true;
-                }
-                return false;
+                selectedPlayer = &maxPlayer;
             }
+
+            // returns true if succeeded, false if not
+            // bool selectPlayer() {
+            //     // Steam has precedence, so first check if a SteamProcess is running
+            //
+            //     Player* newSelectedPlayer = nullptr;
+            //     Player& maxPlayer = *std::ranges::max_element(players);
+            //
+            //     if (maxPlayer.playbackStatus == PLAYING || selectedPlayer != nullptr)
+            //         newSelectedPlayer = &maxPlayer;
+            //
+            //     if (selectedPlayer != nullptr && maxPlayer.playbackStatus != PLAYING)
+            //         return true;
+            //
+            //     if (newSelectedPlayer != nullptr) {
+            //         if (newSelectedPlayer->name != (selectedPlayer == nullptr ? "" : selectedPlayer->name)) {
+            //             qInfo() << "Selecting player:" << newSelectedPlayer->name;
+            //             selectedPlayer = newSelectedPlayer;
+            //         }
+            //         if (selectedPlayer != nullptr)
+            //             return true;
+            //     }
+            //     return false;
+            // }
 
             void refreshPlayers() {
                 qInfo() << "Refreshing players...";
@@ -37,7 +46,16 @@ namespace SignalStatus {
                 players = getMprisPlayers();
             }
 
-            bool needsRefresh() {
+            void refreshSteamProcesses() {
+                //qDebug() << "Refreshing steam processes...";
+                steamProcess = Utils::getSteamProcess();
+            }
+
+            bool processesNeedRefresh() {
+                return steamProcess ? !steamProcess->isValid() : true;
+            }
+
+            bool playersNeedRefresh() {
                 // needs refresh if there is any new player whose name is not in the names of players
                 return std::ranges::any_of(
                     getMprisPlayers(),
@@ -59,10 +77,17 @@ namespace SignalStatus {
             }
 
             [[nodiscard]] std::size_t getHash() const {
-                return std::hash<std::vector<Player>>{}(players);
+                return std::hash<std::vector<Player>>{}(players) ^ ((steamProcess ? std::hash<SteamProcess>{}(*steamProcess) : 0) << 1);
             };
 
-            [[nodiscard]] QString buildAbout() const {
+            // TODO: Add time tracking?
+            [[nodiscard]] QString buildGameAbout() const {
+                return QString("Playing: %1").arg(
+                    steamProcess->name
+                );
+            }
+
+            [[nodiscard]] QString buildMediaAbout() const {
                 QString title = selectedPlayer->metadata["xesam:title"].toString();
                 QString artist = selectedPlayer->metadata["xesam:artist"].toString();
                 QString album = selectedPlayer->metadata["xesam:album"].toString();
@@ -81,8 +106,16 @@ namespace SignalStatus {
                 );
             }
 
-            void updateProfile() const {
-                Utils::updateProfile(buildAbout(), "🎧");
+            void updateProfile() {
+                updateSelectedPlayer();
+
+                if (steamProcess) {
+                    Utils::updateProfile(buildGameAbout(), "🎮");
+                    return;
+                }
+
+                if (selectedPlayer)
+                    Utils::updateProfile(buildMediaAbout(), "🎧");
             }
 
 
@@ -104,7 +137,9 @@ namespace SignalStatus {
 
         private:
             std::vector<Player> players;
+            std::optional<SteamProcess> steamProcess;
 
+            QCoreApplication* app = QCoreApplication::instance();
             QDBusConnectionInterface* interface = QDBusConnection::sessionBus().interface();
             Player* selectedPlayer = nullptr;
     };

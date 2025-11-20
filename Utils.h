@@ -2,6 +2,11 @@
 #define SIGNAL_STATUS_UTILS_H
 #include <QProcess>
 #include <QDebug>
+#include <filesystem>
+#include <fstream>
+#include <optional>
+
+#include "SteamProcess.h"
 
 namespace SignalStatus::Utils {
     enum LogLevel {
@@ -99,6 +104,46 @@ namespace SignalStatus::Utils {
 
         qInfo() << "Done";
         exit(0);
+    }
+
+    bool isNumber(const std::string& s) {
+        return !s.empty() && std::find_if(
+            s.begin(),
+            s.end(),
+            [](unsigned char c) { return !std::isdigit(c); }
+        ) == s.end();
+    }
+
+    // TODO: MAYBE implement selecting between multiple steam processes
+    inline std::optional<SteamProcess> getSteamProcess() {
+        std::string searchString = "SteamLaunch AppId=";
+
+        // For every process
+        for (const auto& dirEntry : std::filesystem::directory_iterator("/proc/")) {
+            if (!dirEntry.is_directory() || !isNumber(dirEntry.path().filename()))
+                continue;
+
+            int processId = stoi(dirEntry.path().filename().string());
+            std::string commandLine;
+            std::ifstream commandLineStream(std::format("/proc/{}/cmdline", processId));
+            getline(commandLineStream, commandLine);
+
+            std::ranges::replace(commandLine, '\0', ' ');
+            if (size_t idPosition = commandLine.find(searchString); idPosition != std::string::npos) {
+                // I'm convinced this can be done easier with string views or ranges
+                std::string appId;
+
+                for (char curChar : commandLine.substr(idPosition + searchString.length())) {
+                    if (curChar == ' ') break;
+                    appId.push_back(curChar);
+                }
+                qDebug() << processId << ": " << appId << ": " << commandLine;
+                SteamProcess process{stoi(appId), processId};
+                qInfo() << "Selecting SteamProcess:" << process.name << "PID:" << processId << "AID:" << appId;
+                return process;
+            }
+        }
+        return std::nullopt;
     }
 }
 

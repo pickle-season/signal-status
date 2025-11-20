@@ -1,4 +1,4 @@
-#include <QDBusMetaType>
+// #include <QDBusMetaType>
 #include <QDebug>
 #include <csignal>
 #include <cstdlib>
@@ -6,13 +6,17 @@
 #include <memory>
 #include <print>
 #include <ctime>
+#include <QCoreApplication>
 
 #include "Session.h"
 
 namespace SignalStatus {
+    // TODO: Create a QtCoreApplication to be able to send requests
+
     // TODO: Move to session probably as something like runLoop()
-    [[noreturn]] void run(const Utils::LogLevel logLevel) {
-        Utils::LOG_LEVEL = logLevel;
+    [[noreturn]] void run(int argc, char* argv[]) {
+        Utils::LOG_LEVEL = Utils::getLogLevel(argc, argv);
+        QCoreApplication app{argc, argv};
 
         qInstallMessageHandler(Utils::messageOutput);
         // TODO: Add check if signal-cli is installed
@@ -33,27 +37,27 @@ namespace SignalStatus {
             sleep(1);
 
             // refresh players if needed
-            if (session.needsRefresh())
+            if (session.playersNeedRefresh())
                 session.refreshPlayers();
 
+            if (session.processesNeedRefresh())
+                session.refreshSteamProcesses();
+
+            // FIXME: When SteamProcess is selected and a player is playing,
+            //  the session hash always changes because of player updating location.
+            //  Solution: getHash() dynamically check if hash is based on player or process
+
             // if nothing changed, continue
-            if (oldHash == session.getHash())
+            size_t newHash = session.getHash();
+            if (oldHash == newHash)
                 continue;
+            oldHash = newHash;
 
-            oldHash = session.getHash();
-
-            // try to select player, if no player available, continue
-            if (!session.selectPlayer())
-                continue;
-
-            // finally, update profile
             session.updateProfile();
         }
     }
 } // namespace SignalStatus
 
-int main(const int argc, char* argv[]) {
-    SignalStatus::run(
-        SignalStatus::Utils::getLogLevel(argc, argv)
-    );
+int main(int argc, char* argv[]) {
+    SignalStatus::run(argc, argv);
 }
