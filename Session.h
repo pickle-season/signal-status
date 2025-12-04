@@ -57,7 +57,7 @@ namespace SignalStatus {
                 ) || std::ranges::any_of(
                     players,
                     [&](Player& player) {
-                        player.poll();
+                        player.poll(); // TODO: Do not poll players (modify state) in a check function. Instead, separate polling (pollAllPlayers() or similar)
                         return !player.isValid;
                     }
                 );
@@ -128,6 +128,6 @@ namespace SignalStatus {
 
             QCoreApplication* app = QCoreApplication::instance();
             QDBusConnectionInterface* interface = QDBusConnection::sessionBus().interface();
-            Player* selectedPlayer = nullptr;
+            Player* selectedPlayer = nullptr; // TODO: Refactor to std::optional<size_t> with index or std::optional<QString> with name
     };
 } // SignalStatus
