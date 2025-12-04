@@ -1,5 +1,5 @@
-#ifndef SIGNAL_STATUS_SESSION_H
-#define SIGNAL_STATUS_SESSION_H
+#pragma once
+
 #include <QDBusConnectionInterface>
 
 #include "Player.h"
@@ -131,5 +131,3 @@ namespace SignalStatus {
             Player* selectedPlayer = nullptr;
     };
 } // SignalStatus
-
-#endif //SIGNAL_STATUS_SESSION_H

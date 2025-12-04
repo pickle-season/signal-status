@@ -1,5 +1,5 @@
-#ifndef SIGNAL_STATUS_UTILS_H
-#define SIGNAL_STATUS_UTILS_H
+#pragma once
+
 #include <QProcess>
 #include <QDebug>
 #include <filesystem>
@@ -42,7 +42,6 @@ namespace SignalStatus::Utils {
 
     inline LogLevel LOG_LEVEL;
 
-    // TODO: Add color coding to levels
     inline void messageOutput(const QtMsgType type, const QMessageLogContext& context, const QString& msg) {
         const LogLevel logLevel = Qt2SS[type];
         if (logLevel < LOG_LEVEL) return;
@@ -56,10 +55,8 @@ namespace SignalStatus::Utils {
         p.start(executable, args);
         p.waitForFinished();
 
-        //QString std_out = p.readAllStandardOutput();
-
         if (const QString stdErr = p.readAllStandardError(); stdErr != "")
-            qWarning() << "Command returned stderr:" << stdErr;
+            qDebug() << "Command returned stderr:" << stdErr;
         return p.readAll();
     }
 
@@ -68,9 +65,10 @@ namespace SignalStatus::Utils {
         runCommand(
             "signal-cli",
             {
+                // "--log-file", "./signal-cli.log",
                 "updateProfile",
                 "--about", about,
-                "--about-emoji", emoji
+                "--about-emoji", emoji,
             }
         );
     }
@@ -80,7 +78,7 @@ namespace SignalStatus::Utils {
         const long long minutes = totalSeconds % 3600 / 60;
         const long long seconds = totalSeconds % 60;
 
-        // TODO: use --:-- when unknown time or 0:00
+        // TODO: Test more missing/zero time edge cases
 
         if (!(hours || minutes || seconds)) {
             return {"--:--"};
@@ -115,11 +113,10 @@ namespace SignalStatus::Utils {
         exit(0);
     }
 
-    bool isNumber(const std::string& s) {
-        return !s.empty() && std::find_if(
-            s.begin(),
-            s.end(),
-            [](unsigned char c) { return !std::isdigit(c); }
+    inline bool isNumber(const std::string& s) {
+        return !s.empty() && std::ranges::find_if(
+            s,
+            [](unsigned const char c) { return !std::isdigit(c); }
         ) == s.end();
     }
 
@@ -155,6 +152,3 @@ namespace SignalStatus::Utils {
         return std::nullopt;
     }
 }
-
-
-#endif //SIGNAL_STATUS_UTILS_H

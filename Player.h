@@ -1,5 +1,5 @@
-#ifndef SIGNAL_STATUS_PLAYER_H
-#define SIGNAL_STATUS_PLAYER_H
+#pragma once
+
 #include <QDBusInterface>
 #include <qdbusargument.h>
 #include <qdbusreply.h>
@@ -62,6 +62,7 @@ namespace SignalStatus {
                 const QVariant metadataVariant = getProperty("Metadata");
 
                 if (!isValid) {
+                    qInfo() << "Deselecting player:" << name;
                     return;
                 }
 
@@ -80,7 +81,7 @@ namespace SignalStatus {
 
         private:
             // TODO: Refactor out remaining std::string
-            QVariant getProperty(const std::string& property) {
+            QVariant getProperty(const QString& property) {
                 QDBusInterface interface(
                     name,
                     "/org/mpris/MediaPlayer2",
@@ -89,10 +90,10 @@ namespace SignalStatus {
                 );
 
                 QDBusReply<QDBusVariant> reply =
-                    interface.call("Get", "org.mpris.MediaPlayer2.Player", QString::fromStdString(property));
+                    interface.call("Get", "org.mpris.MediaPlayer2.Player", property);
                 if (!reply.isValid()) {
                     const QDBusError* error = &reply.error();
-                    qWarning() << name.toStdString() << ":"
+                    qDebug() << name.toStdString() << ":"
                         << error->name().toStdString() << ":"
                         << error->message().toStdString();
 
@@ -141,5 +142,3 @@ namespace std {
         }
     };
 }
-
-#endif // SIGNAL_STATUS_PLAYER_H

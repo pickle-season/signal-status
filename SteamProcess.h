@@ -1,5 +1,4 @@
-#ifndef SIGNAL_STATUS_STEAMPROCESS_H
-#define SIGNAL_STATUS_STEAMPROCESS_H
+#pragma once
 
 #include <QtNetwork/QNetworkAccessManager>
 #include <QCoreApplication>
@@ -69,5 +68,3 @@ namespace std {
         }
     };
 }
-
-#endif //SIGNAL_STATUS_STEAMPROCESS_H
